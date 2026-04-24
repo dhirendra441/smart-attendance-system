@@ -259,6 +259,17 @@ export const closeTeacherSession = async (publicSessionId, teacherId) => {
   return serializedSession;
 };
 
+export const deleteTeacherSession = async (publicSessionId, teacherId) => {
+  const session = await ensureTeacherSession(publicSessionId, teacherId);
+
+  await Promise.all([
+    AttendanceRecord.deleteMany({ session: session._id }),
+    AttendanceIncident.deleteMany({ session: session._id })
+  ]);
+
+  await session.deleteOne();
+};
+
 export const getPublicSessionByQr = async (publicSessionId, qrToken) => {
   const session = await AttendanceSession.findOne({ publicSessionId }).populate("teacher");
 

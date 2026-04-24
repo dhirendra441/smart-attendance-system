@@ -116,6 +116,10 @@ a {
   box-shadow: var(--shadow-drop), var(--shadow-glow);
 }
 
+.attendance-login-card {
+  max-width: 640px;
+}
+
 /* =========================================
    TYPOGRAPHY & ACCENTS
    ========================================= */
@@ -156,6 +160,108 @@ h1, h2, h3 {
   color: var(--text-secondary);
   font-size: 15px;
   margin: 0;
+}
+
+.attendance-context-card,
+.verification-panel {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+}
+
+.attendance-context-card {
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  display: grid;
+  gap: 10px;
+}
+
+.attendance-context-card p {
+  margin: 0;
+  color: #e4e4e7;
+}
+
+.attendance-context-card strong {
+  color: #ffffff;
+}
+
+.verification-panel {
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.verification-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.verification-panel-header h3 {
+  font-size: 18px;
+}
+
+.verification-step-list {
+  display: grid;
+  gap: 10px;
+}
+
+.verification-step {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 14px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.verification-step:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.verification-step:last-child {
+  padding-bottom: 0;
+}
+
+.verification-step-indicator {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+}
+
+.verification-step strong {
+  display: block;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.verification-step p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.verification-step.active .verification-step-indicator {
+  background: rgba(168, 85, 247, 0.18);
+  color: #ffffff;
+  border-color: rgba(168, 85, 247, 0.45);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.22);
+}
+
+.verification-step.complete .verification-step-indicator {
+  background: rgba(34, 197, 94, 0.14);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.34);
 }
 
 /* =========================================
@@ -291,7 +397,7 @@ h1, h2, h3 {
 .primary-button:active { transform: scale(0.98); }
 .primary-button:disabled { opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
 
-.secondary-button, .ghost-button {
+.secondary-button, .ghost-button, .danger-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -314,6 +420,17 @@ h1, h2, h3 {
   background: transparent;
 }
 .ghost-button:hover { background: rgba(255, 255, 255, 0.05); }
+
+.danger-button {
+  background: rgba(220, 38, 38, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.danger-button:hover {
+  background: rgba(220, 38, 38, 0.18);
+  border-color: rgba(248, 113, 113, 0.45);
+}
 
 /* =========================================
    STATUS BADGES & FEEDBACK

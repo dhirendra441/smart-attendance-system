@@ -6,6 +6,7 @@ import {
 import {
   closeTeacherSession,
   createTeacherSession,
+  deleteTeacherSession,
   getTeacherSessionByPublicId,
   listTeacherSessions
 } from "../services/sessionService.js";
@@ -54,6 +55,15 @@ export const closeTeacherSessionController = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: session
+  });
+});
+
+export const deleteTeacherSessionController = asyncHandler(async (req, res) => {
+  await deleteTeacherSession(req.params.sessionId, req.user._id);
+
+  res.json({
+    success: true,
+    message: "Session deleted successfully."
   });
 });
 

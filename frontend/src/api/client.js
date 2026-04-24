@@ -1,4 +1,19 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+const resolveApiBaseUrl = () => {
+  const configuredBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").trim();
+
+  if (configuredBaseUrl && configuredBaseUrl.toLowerCase() !== "auto") {
+    return configuredBaseUrl.replace(/\/$/, "");
+  }
+
+  if (typeof window === "undefined") {
+    return "http://localhost:5000/api/v1";
+  }
+
+  const currentHost = window.location.hostname || "localhost";
+  return `http://${currentHost}:5000/api/v1`;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 const AUTH_STORAGE_KEY = "smart-attendance-auth";
 
@@ -61,6 +76,10 @@ export const api = {
       body: JSON.stringify(payload)
     }),
   getTeacherSession: (sessionId) => request(`/teacher/sessions/${sessionId}`),
+  deleteTeacherSession: (sessionId) =>
+    request(`/teacher/sessions/${sessionId}`, {
+      method: "DELETE"
+    }),
   closeTeacherSession: (sessionId) =>
     request(`/teacher/sessions/${sessionId}/close`, {
       method: "PATCH"

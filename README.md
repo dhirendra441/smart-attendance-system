@@ -343,30 +343,27 @@ Example:
 ```env
 PORT=5000
 MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/smart-attendance?retryWrites=true&w=majority
-CLIENT_ORIGIN=http://localhost:5173,http://192.168.1.5:5173
-FRONTEND_BASE_URL=http://192.168.1.5:5173
+CLIENT_ORIGIN=http://localhost:5173,auto
+FRONTEND_BASE_URL=auto
 JWT_SECRET=replace-this-with-a-long-random-secret
 JWT_EXPIRES_IN=7d
 ```
 
 Notes:
 - `CLIENT_ORIGIN` supports multiple origins separated by commas
-- include both `localhost` and your local IP if you use laptop browser + phone browser
+- `auto` makes the backend detect your current laptop IP at startup
 - `FRONTEND_BASE_URL` is what gets encoded inside the QR
+- `CLIENT_ORIGIN=http://localhost:5173,auto` allows both laptop browser and mobile browser
 
 ### Frontend: `frontend/.env`
 
 Create this file manually inside `frontend/`:
 
 ```env
-VITE_API_BASE_URL=http://192.168.1.5:5000/api/v1
+VITE_API_BASE_URL=auto
 ```
 
-If you only test on the same laptop, you can use:
-
-```env
-VITE_API_BASE_URL=http://localhost:5000/api/v1
-```
+`auto` makes the frontend call `http://<current-browser-host>:5000/api/v1`.
 
 ## How To Run The Project
 
@@ -394,9 +391,9 @@ backend/.env
 Make sure:
 
 - backend `MONGODB_URI` is valid
-- backend `FRONTEND_BASE_URL` uses your laptop IP for QR on mobile
-- backend `CLIENT_ORIGIN` includes the frontend origins you will use
-- frontend `VITE_API_BASE_URL` points to the backend
+- backend `FRONTEND_BASE_URL=auto`
+- backend `CLIENT_ORIGIN` includes `auto`
+- frontend `VITE_API_BASE_URL=auto`
 
 ### 4. Start the backend
 
@@ -443,9 +440,9 @@ npm run dev
 To make QR scanning work on a phone:
 
 1. connect phone and laptop to the same Wi-Fi
-2. set `FRONTEND_BASE_URL` to your laptop IP
-3. set `VITE_API_BASE_URL` to your laptop IP
-4. include that frontend origin in `CLIENT_ORIGIN`
+2. keep `FRONTEND_BASE_URL=auto`
+3. keep `VITE_API_BASE_URL=auto`
+4. keep `CLIENT_ORIGIN=http://localhost:5173,auto`
 5. restart backend and frontend after env changes
 6. create a new session so a new QR is generated
 
@@ -470,4 +467,3 @@ If the QR still opens `localhost`, the backend was not restarted after the `.env
 - Vite is configured with `host: 0.0.0.0`, so it can be reached on your local network
 - Demo users are seeded by backend startup
 - Session reporting is section-based, so student records should have the correct `section`
-

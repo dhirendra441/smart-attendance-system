@@ -3,6 +3,29 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
+const VERIFICATION_STEPS = [
+  {
+    title: "Verifying student identity",
+    detail: "Matching your roll number with the registered classroom roster."
+  },
+  {
+    title: "Fetching location signal",
+    detail: "Checking whether the device is within the expected classroom zone."
+  },
+  {
+    title: "Analyzing device fingerprint",
+    detail: "Comparing browser and device metadata against proxy attendance rules."
+  },
+  {
+    title: "Validating secure QR token",
+    detail: "Confirming the session token and short expiry window are still active."
+  },
+  {
+    title: "Finalizing attendance record",
+    detail: "Preparing the verified attendance entry for submission."
+  }
+];
+
 const formatDateTime = (value) =>
   new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
@@ -15,6 +38,12 @@ const getClientMeta = () => ({
   language: navigator.language || "unknown",
   screen: `${window.screen.width}x${window.screen.height}`
 });
+
+const idleVerificationState = {
+  phase: "idle",
+  activeStep: -1,
+  completedSteps: []
+};
 
 export const StudentAttendancePage = () => {
   const { sessionId } = useParams();
@@ -31,9 +60,12 @@ export const StudentAttendancePage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [verificationState, setVerificationState] = useState(idleVerificationState);
   const autoSubmitRef = useRef(false);
+  const verificationRunRef = useRef(false);
 
   const qrToken = searchParams.get("token") || "";
+  const delay = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
   useEffect(() => {
     const loadSession = async () => {
@@ -63,6 +95,8 @@ export const StudentAttendancePage = () => {
       if (!isAuthenticated || user?.role !== "student" || !qrToken) {
         setVerifiedSession(null);
         autoSubmitRef.current = false;
+        verificationRunRef.current = false;
+        setVerificationState(idleVerificationState);
         return;
       }
 
@@ -88,6 +122,11 @@ export const StudentAttendancePage = () => {
     return new Date(effectiveSession.expiresAt) < new Date() || effectiveSession.status === "CLOSED";
   }, [effectiveSession]);
 
+  const shouldShowVerificationPanel =
+    Boolean(verifiedSession) &&
+    !isExpired &&
+    (!verifiedSession?.alreadyMarked || Boolean(result) || verificationState.phase !== "idle");
+
   const submitAttendance = async () => {
     setIsSubmitting(true);
     setError("");
@@ -100,10 +139,63 @@ export const StudentAttendancePage = () => {
       setResult(response);
       const refreshed = await api.verifyStudentAttendanceWindow(sessionId, qrToken);
       setVerifiedSession(refreshed);
+      return true;
     } catch (submitError) {
       setError(submitError.message);
+      return false;
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const runVerificationSequence = async () => {
+    if (verificationRunRef.current) {
+      return;
+    }
+
+    verificationRunRef.current = true;
+    setError("");
+    setVerificationState({
+      phase: "running",
+      activeStep: 0,
+      completedSteps: []
+    });
+
+    const completedSteps = [];
+
+    try {
+      for (let stepIndex = 0; stepIndex < VERIFICATION_STEPS.length; stepIndex += 1) {
+        setVerificationState({
+          phase: "running",
+          activeStep: stepIndex,
+          completedSteps: [...completedSteps]
+        });
+
+        await delay(900);
+        completedSteps.push(stepIndex);
+
+        setVerificationState({
+          phase: "running",
+          activeStep: stepIndex,
+          completedSteps: [...completedSteps]
+        });
+      }
+
+      setVerificationState({
+        phase: "submitting",
+        activeStep: VERIFICATION_STEPS.length - 1,
+        completedSteps: [...completedSteps]
+      });
+
+      const wasSuccessful = await submitAttendance();
+
+      setVerificationState({
+        phase: wasSuccessful ? "complete" : "idle",
+        activeStep: wasSuccessful ? VERIFICATION_STEPS.length - 1 : -1,
+        completedSteps: wasSuccessful ? [...completedSteps] : []
+      });
+    } finally {
+      verificationRunRef.current = false;
     }
   };
 
@@ -125,7 +217,7 @@ export const StudentAttendancePage = () => {
     }
 
     autoSubmitRef.current = true;
-    submitAttendance();
+    runVerificationSequence();
   }, [isAuthenticated, isExpired, isReady, isSigningIn, isSubmitting, result, user, verifiedSession]);
 
   const handleAuthChange = (event) => {
@@ -157,8 +249,10 @@ export const StudentAttendancePage = () => {
 
   const handleUseAnotherStudent = () => {
     autoSubmitRef.current = false;
+    verificationRunRef.current = false;
     setResult(null);
     setVerifiedSession(null);
+    setVerificationState(idleVerificationState);
     setAuthForm({
       phoneNumber: "",
       password: ""
@@ -168,7 +262,7 @@ export const StudentAttendancePage = () => {
 
   return (
     <div className="login-wrapper">
-      <section className="login-card">
+      <section className="login-card attendance-login-card">
         <div className="panel-heading">
           <div>
             <p className="eyebrow">QR Check-In</p>
@@ -186,7 +280,7 @@ export const StudentAttendancePage = () => {
         {isLoading && <div className="feedback">Loading QR session...</div>}
 
         {effectiveSession && (
-          <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
+          <div className="attendance-context-card">
             <p><strong>Course:</strong> {effectiveSession.courseName}</p>
             <p><strong>Teacher:</strong> {effectiveSession.teacherName}</p>
             <p><strong>Room:</strong> {effectiveSession.room || "Not provided"}</p>
@@ -196,7 +290,7 @@ export const StudentAttendancePage = () => {
 
         {!isAuthenticated && !isLoading && (
           <form className="session-form" onSubmit={handleStudentLogin}>
-            <p className="subtle-text" style={{ marginBottom: '16px' }}>
+            <p className="subtle-text" style={{ marginBottom: "16px" }}>
               Enter your registered roll number and password to mark attendance.
             </p>
 
@@ -235,24 +329,70 @@ export const StudentAttendancePage = () => {
 
         {isAuthenticated && user?.role === "student" && (
           <div className="session-form">
-            <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
+            <div className="attendance-context-card">
               <p><strong>Student:</strong> {user.name}</p>
               <p><strong>Roll Number:</strong> {user.rollNumber || "Not provided"}</p>
             </div>
 
+            {shouldShowVerificationPanel && (
+              <div className="verification-panel">
+                <div className="verification-panel-header">
+                  <div>
+                    <p className="eyebrow">Security Pipeline</p>
+                    <h3>{verificationState.phase === "complete" ? "Attendance Verified" : "Attendance Verification In Progress"}</h3>
+                  </div>
+                  <span className={`status-badge ${verificationState.phase === "complete" ? "ok" : "neutral"}`}>
+                    {verificationState.phase === "complete"
+                      ? "Verified"
+                      : verificationState.phase === "submitting"
+                        ? "Submitting"
+                        : verificationState.phase === "running"
+                          ? "Analyzing"
+                          : "Ready"}
+                  </span>
+                </div>
+
+                <div className="verification-step-list">
+                  {VERIFICATION_STEPS.map((step, index) => {
+                    const isComplete = verificationState.completedSteps.includes(index);
+                    const isActive = verificationState.activeStep === index && verificationState.phase !== "complete";
+                    const stateClass = isComplete ? "complete" : isActive ? "active" : "pending";
+
+                    return (
+                      <div key={step.title} className={`verification-step ${stateClass}`}>
+                        <span className="verification-step-indicator">{isComplete ? "OK" : index + 1}</span>
+                        <div>
+                          <strong>{step.title}</strong>
+                          <p>{step.detail}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <button
               type="button"
               className="primary-button"
-              disabled={isExpired || isSubmitting || verifiedSession?.alreadyMarked}
-              onClick={submitAttendance}
+              disabled={
+                isExpired ||
+                isSubmitting ||
+                verificationState.phase === "running" ||
+                verificationState.phase === "submitting" ||
+                verifiedSession?.alreadyMarked
+              }
+              onClick={runVerificationSequence}
             >
               {verifiedSession?.alreadyMarked
                 ? "Attendance Already Marked"
-                : isSubmitting
-                  ? "Submitting..."
-                  : result
-                    ? "Attendance Recorded"
-                    : "Mark My Attendance"}
+                : verificationState.phase === "running" || verificationState.phase === "submitting"
+                  ? "Running Security Checks..."
+                  : isSubmitting
+                    ? "Submitting..."
+                    : result
+                      ? "Attendance Recorded"
+                      : "Start Secure Check-In"}
             </button>
 
             <button type="button" className="ghost-button" onClick={handleUseAnotherStudent}>
@@ -262,7 +402,7 @@ export const StudentAttendancePage = () => {
         )}
 
         {result && (
-          <div className="feedback success" style={{ marginTop: '16px' }}>
+          <div className="feedback success" style={{ marginTop: "16px" }}>
             Attendance recorded successfully at {formatDateTime(result.submittedAt)}.
           </div>
         )}

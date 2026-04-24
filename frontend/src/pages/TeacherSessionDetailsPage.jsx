@@ -15,6 +15,7 @@ export const TeacherSessionDetailsPage = () => {
   const [incidents, setIncidents] = useState([]);
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState("");
 
   const loadSession = async () => {
@@ -61,6 +62,32 @@ export const TeacherSessionDetailsPage = () => {
     }
   };
 
+  const handleDeleteSession = async () => {
+    if (!session) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      `Delete "${session.courseName}" and all its attendance records and incidents?`
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setError("");
+
+    try {
+      await api.deleteTeacherSession(session.publicSessionId);
+      navigate("/teacher", { replace: true });
+    } catch (deleteError) {
+      setError(deleteError.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="dashboard-page">
       <header className="hero-header session-detail-header">
@@ -78,6 +105,9 @@ export const TeacherSessionDetailsPage = () => {
           </Link>
           <button type="button" className="secondary-button" onClick={loadSession}>
             Refresh Session
+          </button>
+          <button type="button" className="danger-button" onClick={handleDeleteSession} disabled={isDeleting}>
+            {isDeleting ? "Deleting..." : "Delete Session"}
           </button>
         </div>
       </header>
